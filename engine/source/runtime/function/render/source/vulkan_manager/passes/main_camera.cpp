@@ -273,11 +273,32 @@ namespace Pilot
         color_grading_pass.preserveAttachmentCount = 0;
         color_grading_pass.pPreserveAttachments    = NULL;
 
+        VkAttachmentReference cycle_pass_input_attachment_reference {};
+        cycle_pass_input_attachment_reference.attachment =
+            &backup_odd_color_attachment_description - attachments;
+        cycle_pass_input_attachment_reference.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+        VkAttachmentReference cycle_pass_color_attachment_reference {};
+        cycle_pass_color_attachment_reference.attachment =
+            &backup_even_color_attachment_description - attachments;
+        cycle_pass_color_attachment_reference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+
+        VkSubpassDescription& cycle_pass   = subpasses[_main_camera_subpass_cycle];
+        cycle_pass.pipelineBindPoint       = VK_PIPELINE_BIND_POINT_GRAPHICS;
+        cycle_pass.inputAttachmentCount    = 1;
+        cycle_pass.pInputAttachments       = &cycle_pass_input_attachment_reference;
+        cycle_pass.colorAttachmentCount    = 1;
+        cycle_pass.pColorAttachments       = &cycle_pass_color_attachment_reference;
+        cycle_pass.pDepthStencilAttachment = NULL;
+        cycle_pass.preserveAttachmentCount = 0;
+        cycle_pass.pPreserveAttachments    = NULL;
+
         VkAttachmentReference ui_pass_color_attachment_reference {};
-        ui_pass_color_attachment_reference.attachment = &backup_even_color_attachment_description - attachments;
+        ui_pass_color_attachment_reference.attachment = &backup_odd_color_attachment_description - attachments;
         ui_pass_color_attachment_reference.layout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-        uint32_t ui_pass_preserve_attachment = &backup_odd_color_attachment_description - attachments;
+        uint32_t ui_pass_preserve_attachment = &backup_even_color_attachment_description - attachments;
 
         VkSubpassDescription& ui_pass   = subpasses[_main_camera_subpass_ui];
         ui_pass.pipelineBindPoint       = VK_PIPELINE_BIND_POINT_GRAPHICS;
@@ -291,10 +312,10 @@ namespace Pilot
 
         VkAttachmentReference combine_ui_pass_input_attachments_reference[2] = {};
         combine_ui_pass_input_attachments_reference[0].attachment =
-            &backup_odd_color_attachment_description - attachments;
+            &backup_even_color_attachment_description - attachments;
         combine_ui_pass_input_attachments_reference[0].layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         combine_ui_pass_input_attachments_reference[1].attachment =
-            &backup_even_color_attachment_description - attachments;
+            &backup_odd_color_attachment_description - attachments;
         combine_ui_pass_input_attachments_reference[1].layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
         VkAttachmentReference combine_ui_pass_color_attachment_reference {};
@@ -362,14 +383,23 @@ namespace Pilot
         color_grading_pass_depend_on_tone_mapping_pass.dstAccessMask   = VK_ACCESS_SHADER_READ_BIT;
         color_grading_pass_depend_on_tone_mapping_pass.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
-        VkSubpassDependency& ui_pass_depend_on_color_grading_pass = dependencies[5];
-        ui_pass_depend_on_color_grading_pass.srcSubpass           = _main_camera_subpass_color_grading;
-        ui_pass_depend_on_color_grading_pass.dstSubpass           = _main_camera_subpass_ui;
-        ui_pass_depend_on_color_grading_pass.srcStageMask         = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-        ui_pass_depend_on_color_grading_pass.dstStageMask         = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        ui_pass_depend_on_color_grading_pass.srcAccessMask        = 0;
-        ui_pass_depend_on_color_grading_pass.dstAccessMask        = 0;
-        ui_pass_depend_on_color_grading_pass.dependencyFlags      = VK_DEPENDENCY_BY_REGION_BIT;
+        VkSubpassDependency& cycle_pass_depend_on_color_grading_pass = dependencies[4];
+        cycle_pass_depend_on_color_grading_pass.srcSubpass           = _main_camera_subpass_color_grading;
+        cycle_pass_depend_on_color_grading_pass.dstSubpass           = _main_camera_subpass_cycle;
+        cycle_pass_depend_on_color_grading_pass.srcStageMask    = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        cycle_pass_depend_on_color_grading_pass.dstStageMask    = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+        cycle_pass_depend_on_color_grading_pass.srcAccessMask   = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        cycle_pass_depend_on_color_grading_pass.dstAccessMask   = VK_ACCESS_SHADER_READ_BIT;
+        cycle_pass_depend_on_color_grading_pass.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
+        VkSubpassDependency& ui_pass_depend_on_cycle_pass = dependencies[5];
+        ui_pass_depend_on_cycle_pass.srcSubpass           = _main_camera_subpass_cycle;
+        ui_pass_depend_on_cycle_pass.dstSubpass           = _main_camera_subpass_ui;
+        ui_pass_depend_on_cycle_pass.srcStageMask         = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+        ui_pass_depend_on_cycle_pass.dstStageMask         = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        ui_pass_depend_on_cycle_pass.srcAccessMask        = 0;
+        ui_pass_depend_on_cycle_pass.dstAccessMask        = 0;
+        ui_pass_depend_on_cycle_pass.dependencyFlags      = VK_DEPENDENCY_BY_REGION_BIT;
 
         VkSubpassDependency& combine_ui_pass_depend_on_ui_pass = dependencies[6];
         combine_ui_pass_depend_on_ui_pass.srcSubpass           = _main_camera_subpass_ui;
@@ -2064,7 +2094,8 @@ namespace Pilot
         setupSwapchainFramebuffers();
     }
 
-    void PMainCameraPass::draw(PColorGradingPass& color_grading_pass,
+    void PMainCameraPass::draw(PCyclePass&        cycle_pass,
+                                PColorGradingPass& color_grading_pass,
                                PToneMappingPass&  tone_mapping_pass,
                                PUIPass&           ui_pass,
                                PCombineUIPass&    combine_ui_pass,
@@ -2150,6 +2181,10 @@ namespace Pilot
 
         m_p_vulkan_context->_vkCmdNextSubpass(m_command_info._current_command_buffer, VK_SUBPASS_CONTENTS_INLINE);
 
+        cycle_pass.draw();
+
+        m_p_vulkan_context->_vkCmdNextSubpass(m_command_info._current_command_buffer, VK_SUBPASS_CONTENTS_INLINE);
+
         VkClearAttachment clear_attachments[1];
         clear_attachments[0].aspectMask                  = VK_IMAGE_ASPECT_COLOR_BIT;
         clear_attachments[0].colorAttachment             = 0;
@@ -2181,7 +2216,8 @@ namespace Pilot
         m_p_vulkan_context->_vkCmdEndRenderPass(m_command_info._current_command_buffer);
     }
 
-    void PMainCameraPass::drawForward(PColorGradingPass& color_grading_pass,
+    void PMainCameraPass::drawForward(PCyclePass&        cycle_pass,
+                                      PColorGradingPass& color_grading_pass,
                                       PToneMappingPass&  tone_mapping_pass,
                                       PUIPass&           ui_pass,
                                       PCombineUIPass&    combine_ui_pass,
@@ -2238,6 +2274,10 @@ namespace Pilot
         m_p_vulkan_context->_vkCmdNextSubpass(m_command_info._current_command_buffer, VK_SUBPASS_CONTENTS_INLINE);
 
         color_grading_pass.draw();
+
+        m_p_vulkan_context->_vkCmdNextSubpass(m_command_info._current_command_buffer, VK_SUBPASS_CONTENTS_INLINE);
+
+        cycle_pass.draw();
 
         m_p_vulkan_context->_vkCmdNextSubpass(m_command_info._current_command_buffer, VK_SUBPASS_CONTENTS_INLINE);
 

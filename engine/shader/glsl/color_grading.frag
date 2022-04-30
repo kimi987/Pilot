@@ -17,7 +17,8 @@ void main()
 
     highp vec4 color       = subpassLoad(in_color).rgba;
     
-    // texture(color_grading_lut_texture_sampler, uv)
+    highp vec2 uv = vec2(ceil(color.b / 32.0) / 32.0 + color.r / 32.0, color.g);
+    color = texture(color_grading_lut_texture_sampler, uv);
 
     out_color = color;
 }

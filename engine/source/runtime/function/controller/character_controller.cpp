@@ -47,25 +47,27 @@ namespace Pilot
         Vector3 horizontal_direction = horizontal_displacement.normalisedCopy();
 
         Vector3 final_position = current_position;
-
+        /*
         m_is_touch_ground = physics_scene->sweep(
             m_rigidbody_shape,
             world_transform.getMatrix(),
             Vector3::NEGATIVE_UNIT_Z,
             0.105f,
             hits);
+        */
+        m_is_touch_ground = physics_scene->raycast(final_position, Vector3::NEGATIVE_UNIT_Z, 0.3f, hits);
 
         hits.clear();
-        
-        world_transform.m_position -= 0.1f * Vector3::UNIT_Z;
 
-        // vertical pass
-        if (physics_scene->sweep(
-            m_rigidbody_shape,
-            world_transform.getMatrix(),
-            vertical_direction,
-            vertical_displacement.length(),
-            hits))
+       world_transform.m_position -= 0.1f * Vector3::UNIT_Z;
+
+          // vertical pass
+
+        if (physics_scene->sweep(m_rigidbody_shape,
+                                 world_transform.getMatrix(),
+                                 vertical_direction,
+                                 vertical_displacement.length(),
+                                 hits))
         {
             final_position += hits[0].hit_distance * vertical_direction;
         }
@@ -77,16 +79,42 @@ namespace Pilot
         hits.clear();
 
         // side pass
-        //if (physics_scene->sweep(
-        //    m_rigidbody_shape,
-        //    /**** [0] ****/,
-        //    /**** [1] ****/,
-        //    /**** [2] ****/,
-        //    hits))
-        //{
-        //    final_position += /**** [3] ****/;
-        //}
-        //else
+        if (physics_scene->sweep(
+           m_rigidbody_shape,
+           world_transform.getMatrix(),
+           horizontal_direction ,
+           horizontal_displacement.length(),
+        hits))
+        {
+
+            if (hits.size() > 1)
+            {
+                auto hit_0_nor = hits[0].hit_normal;
+
+                if (true)
+                {
+                    
+                }
+            }
+            if (hits.size() == 1)
+            {
+                // µœ÷◊Û”““∆∂Ø
+                auto moveVec = (hits[0].hit_normal.normalisedCopy() - horizontal_direction);
+                moveVec.z    = 0.f;
+                moveVec.normalise();
+
+                auto speed = horizontal_direction.dotProduct(moveVec) * horizontal_displacement.length();
+                final_position += (hits[0].hit_distance) * horizontal_direction + moveVec * speed;
+            }
+            else
+            {
+                for (int i = 0; i < hits.size(); i++)
+                {
+                    final_position += (hits[i].hit_distance) * horizontal_direction;
+                }
+            }
+        }
+        else
         {
             final_position += horizontal_displacement;
         }

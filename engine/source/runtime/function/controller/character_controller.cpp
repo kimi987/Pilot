@@ -55,29 +55,35 @@ namespace Pilot
             0.105f,
             hits);
         */
-        m_is_touch_ground = physics_scene->raycast(final_position, Vector3::NEGATIVE_UNIT_Z, 0.3f, hits);
-
+        //m_is_touch_ground = physics_scene->raycast(final_position, Vector3::NEGATIVE_UNIT_Z, 0.3f, hits);
+       // if (m_is_touch_ground) {
+          //  final_position += Vector3::UNIT_Z * hits[0].hit_distance;
+        //}
         hits.clear();
-
-       world_transform.m_position -= 0.1f * Vector3::UNIT_Z;
-
+       //printf("world_transform.m_position = %f, %f, %f ", world_transform.m_position.x ,world_transform.m_position.y, world_transform.m_position.z);
           // vertical pass
 
+        float up_length = 0.3f;
+   
         if (physics_scene->sweep(m_rigidbody_shape,
                                  world_transform.getMatrix(),
                                  vertical_direction,
-                                 vertical_displacement.length(),
+                                 vertical_displacement.length() + up_length,
                                  hits))
         {
-            final_position += hits[0].hit_distance * vertical_direction;
+            m_is_touch_ground = true;
+            //printf("hits[0].position = %f, %f, %f", hits[0].hit_position.x, hits[0].hit_position.y, hits[0].hit_position.z);
+            final_position += (hits[0].hit_distance - up_length) * vertical_direction;
         }
         else
         {
+            m_is_touch_ground = false;
             final_position += vertical_displacement;
         }
 
         hits.clear();
 
+        //world_transform.m_position += Vector3::UNIT_Z;
         // side pass
         if (physics_scene->sweep(
            m_rigidbody_shape,
@@ -86,18 +92,6 @@ namespace Pilot
            horizontal_displacement.length(),
         hits))
         {
-
-            if (hits.size() > 1)
-            {
-                auto hit_0_nor = hits[0].hit_normal;
-
-                if (true)
-                {
-                    
-                }
-            }
-            if (hits.size() == 1)
-            {
                 // µœ÷◊Û”““∆∂Ø
                 auto moveVec = (hits[0].hit_normal.normalisedCopy() - horizontal_direction);
                 moveVec.z    = 0.f;
@@ -105,14 +99,6 @@ namespace Pilot
 
                 auto speed = horizontal_direction.dotProduct(moveVec) * horizontal_displacement.length();
                 final_position += (hits[0].hit_distance) * horizontal_direction + moveVec * speed;
-            }
-            else
-            {
-                for (int i = 0; i < hits.size(); i++)
-                {
-                    final_position += (hits[i].hit_distance) * horizontal_direction;
-                }
-            }
         }
         else
         {

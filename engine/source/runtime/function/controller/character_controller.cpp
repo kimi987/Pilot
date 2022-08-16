@@ -86,33 +86,26 @@ namespace Pilot
            horizontal_displacement.length(),
         hits))
         {
-
-            if (hits.size() > 1)
-            {
-                auto hit_0_nor = hits[0].hit_normal;
-
-                if (true)
-                {
-                    
-                }
-            }
-            if (hits.size() == 1)
+            Vector3 moveVec;
+            if (hits.size() >= 1)
             {
                 // µœ÷◊Û”““∆∂Ø
-                auto moveVec = (hits[0].hit_normal.normalisedCopy() - horizontal_direction);
+                moveVec = (hits[0].hit_normal.normalisedCopy() - horizontal_direction);
                 moveVec.z    = 0.f;
                 moveVec.normalise();
 
                 auto speed = horizontal_direction.dotProduct(moveVec) * horizontal_displacement.length();
                 final_position += (hits[0].hit_distance) * horizontal_direction + moveVec * speed;
             }
-            else
-            {
-                for (int i = 0; i < hits.size(); i++)
-                {
-                    final_position += (hits[i].hit_distance) * horizontal_direction;
-                }
-            }
+
+           /*for (int i = 1; i < hits.size(); i++)
+           {
+               moveVec = moveVec + hits[i].hit_normal.normalisedCopy();
+           }
+           moveVec.z = 0.f;
+           moveVec.normalise();
+           auto speed = horizontal_direction.dotProduct(moveVec) * horizontal_displacement.length();
+           final_position += (hits[0].hit_distance) * horizontal_direction + moveVec * speed;*/ 
         }
         else
         {
